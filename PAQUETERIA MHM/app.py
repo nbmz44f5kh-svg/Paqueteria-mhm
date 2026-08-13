@@ -5,21 +5,57 @@ import os
 from PIL import Image
 
 # ==========================================
-# RUTA BASE DINÁMICA (SOLUCIÓN DE CARGA DE ARCHIVOS)
+# RUTA BASE Y CONFIGURACIÓN
 # ==========================================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_path(filename):
-    """Devuelve la ruta absoluta exacta para cualquier archivo en la carpeta de la app."""
     return os.path.join(BASE_DIR, filename)
 
-# ==========================================
-# CONFIGURACIÓN DE PÁGINA
-# ==========================================
-st.set_page_config(page_title="Paquetería MHM - Sistema de Control", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Paquetería MHM",
+    page_icon="📦",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 # ==========================================
-# CONTROL DE SESIÓN (INICIAR / TERMINAR JORNADA)
+# ESTILOS CSS PREMIUM (DISEÑO MÓVIL Y FLUIDEZ)
+# ==========================================
+st.markdown("""
+    <style>
+    /* Estilos globales */
+    .main { background-color: #f8f9fa; }
+    
+    /* Botones más amplios y táctiles */
+    .stButton>button {
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.2s ease-in-out;
+        border: none;
+        box-shadow: 0px 2px 5px rgba(0,0,0,0.08);
+    }
+    .stButton>button:active {
+        transform: scale(0.98);
+    }
+
+    /* Ocultar elementos nativos de Streamlit para apariencia app */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Tarjetas redondeadas */
+    [data-testid="stForm"], div[data-testid="stContainer"] {
+        border-radius: 12px !important;
+        border: 1px solid #e9ecef !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+        background-color: #ffffff;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# CONTROL DE SESIÓN
 # ==========================================
 if "jornada_iniciada" not in st.session_state:
     st.session_state["jornada_iniciada"] = False
@@ -27,9 +63,8 @@ if "usuario_activo" not in st.session_state:
     st.session_state["usuario_activo"] = ""
 
 # ==========================================
-# FUNCIONES AUXILIARES Y CONSTANTES
+# FUNCIONES CON CACHÉ (ALTA VELOCIDAD)
 # ==========================================
-
 LISTA_CHOFERES = ["Ninguno / No aplica", "Chofer 1", "Chofer 2", "Chofer 3", "Chofer 4", "Particular"]
 LISTA_ESTATUS = ["En Almacén / Bodega", "En Tránsito", "Entregado", "Pendiente de Recolección"]
 
@@ -40,6 +75,16 @@ ARCHIVOS_MODULOS = {
     "Andrea": get_path("registros_andrea.csv"),
     "Paquetería General": get_path("registros_paqueteria_general.csv")
 }
+
+@st.cache_resource(show_spinner=False)
+def cargar_imagen_memoria(ruta_completa):
+    """Carga y mantiene la imagen en RAM para evitar lectura de disco."""
+    if os.path.exists(ruta_completa):
+        try:
+            return Image.open(ruta_completa)
+        except Exception:
+            return None
+    return None
 
 def mostrar_logo(nombre_base, ancho=120):
     extensiones = [".png", ".jpg", ".jpeg", ".webp", ""]
@@ -53,14 +98,26 @@ def mostrar_logo(nombre_base, ancho=120):
     for var in variaciones:
         for ext in extensiones:
             archivo_buscado = get_path(f"{var}{ext}")
-            if os.path.exists(archivo_buscado):
-                try:
-                    img = Image.open(archivo_buscado)
-                    st.image(img, width=ancho)
-                    return
-                except Exception:
-                    pass
+            img = cargar_imagen_memoria(archivo_buscado)
+            if img:
+                st.image(img, width=ancho)
+                return
     st.caption(f"[{nombre_base}]")
+
+@st.cache_data(show_spinner=False, ttl=300)
+def cargar_y_asegurar_estatus(archivo_csv):
+    """Carga veloz de datos en caché."""
+    df = pd.read_csv(archivo_csv)
+    if "Estatus" not in df.columns:
+        df["Estatus"] = "En Tránsito"
+    
+    cols = list(df.columns)
+    if "Estatus" in cols:
+        cols.remove("Estatus")
+        idx = cols.index("Destino") + 1 if "Destino" in cols else 1
+        cols.insert(idx, "Estatus")
+        df = df[cols]
+    return df
 
 def guardar_registro(datos_dict, nombre_modulo):
     nombre_archivo = f"registros_{nombre_modulo.lower().replace(' ', '_')}.csv"
@@ -74,26 +131,13 @@ def guardar_registro(datos_dict, nombre_modulo):
         df_completo = pd.concat([df_existente, df_nuevo], ignore_index=True)
         df_completo.to_csv(archivo_csv, index=False)
         
+    st.cache_data.clear()  # Limpia la caché para refrescar los datos al momento
     st.success("✅ Registro guardado exitosamente.")
 
-def cargar_y_asegurar_estatus(archivo_csv):
-    df = pd.read_csv(archivo_csv)
-    if "Estatus" not in df.columns:
-        df["Estatus"] = "En Tránsito"
-    
-    cols = list(df.columns)
-    if "Estatus" in cols:
-        cols.remove("Estatus")
-        idx = cols.index("Destino") + 1 if "Destino" in cols else 1
-        cols.insert(idx, "Estatus")
-        df = df[cols]
-    return df
-
 # ==========================================
-# PANTALLA 1: INICIAR JORNADA (LOGIN LIMPIO)
+# PANTALLA 1: LOGIN LIMPIO
 # ==========================================
 if not st.session_state["jornada_iniciada"]:
-    st.write("")
     st.write("")
     col_izq, col_centro, col_der = st.columns([1, 1.2, 1])
     
@@ -101,12 +145,12 @@ if not st.session_state["jornada_iniciada"]:
         with st.container(border=True):
             c_logo_a, c_logo_b, c_logo_c = st.columns([1, 2, 1])
             with c_logo_b:
-                mostrar_logo("logo_mhm", ancho=160)
+                mostrar_logo("logo_mhm", ancho=150)
                 
-            st.markdown("<h3 style='text-align: center;'>Control de Operaciones</h3>", unsafe_allow_html=True)
-            st.markdown("<p style='text-align: center; color: gray;'>Ingresa tus credenciales para iniciar jornada</p>", unsafe_allow_html=True)
+            st.markdown("<h3 style='text-align: center; margin-bottom: 0px;'>Control de Operaciones</h3>", unsafe_allow_html=True)
+            st.markdown("<p style='text-align: center; color: gray; font-size: 0.9em;'>Ingresa tus credenciales</p>", unsafe_allow_html=True)
             
-            correo_user = st.text_input("Correo / Usuario", placeholder="ejemplo@mhm.com")
+            correo_user = st.text_input("Usuario", placeholder="ejemplo@mhm.com")
             pass_user = st.text_input("Contraseña", type="password")
             
             st.write("")
@@ -116,27 +160,26 @@ if not st.session_state["jornada_iniciada"]:
                     st.session_state["usuario_activo"] = correo_user
                     st.rerun()
                 else:
-                    st.error("Por favor ingresa tu correo o usuario.")
+                    st.error("Ingresa tu usuario.")
     st.stop()
 
 # ==========================================
 # PANTALLA 2: APLICACIÓN PRINCIPAL
 # ==========================================
 
-# Menú Lateral
 with st.sidebar:
-    mostrar_logo("logo_mhm", ancho=130)
+    mostrar_logo("logo_mhm", ancho=120)
     st.markdown(f"👤 **Operador:** `{st.session_state['usuario_activo']}`")
     
     if st.button("🔴 Terminar Jornada", use_container_width=True):
         st.session_state["jornada_iniciada"] = False
         st.session_state["usuario_activo"] = ""
+        st.cache_data.clear()
         st.rerun()
         
     st.divider()
-    st.title("Navegación")
     modulo = st.radio(
-        "Selecciona Módulo:",
+        "Módulo Activo:",
         [
             "John Deere",
             "Club de Pollos",
@@ -147,8 +190,7 @@ with st.sidebar:
         ]
     )
 
-st.title("Registro de Paquetería y Traspasos")
-st.caption(f"Módulo activo: {modulo}")
+st.title("Sistema de Paquetería y Traspasos")
 
 fecha_actual = datetime.date.today()
 
@@ -156,7 +198,7 @@ fecha_actual = datetime.date.today()
 if modulo == "John Deere":
     col_logo, col_titulo = st.columns([1, 5])
     with col_logo:
-        mostrar_logo("logo_john_deere", ancho=100)
+        mostrar_logo("logo_john_deere", ancho=90)
     with col_titulo:
         st.subheader("Operaciones John Deere")
 
@@ -171,13 +213,13 @@ if modulo == "John Deere":
             
         with c2:
             st.markdown("**Asignación de Choferes**")
-            chofer1_jd = st.selectbox("Chofer que recolecta (Trae de MTY / Recibe)", LISTA_CHOFERES)
-            chofer2_jd = st.selectbox("Chofer que traslada (Toma / Hace Ruta)", LISTA_CHOFERES)
+            chofer1_jd = st.selectbox("Chofer que recolecta", LISTA_CHOFERES)
+            chofer2_jd = st.selectbox("Chofer que traslada", LISTA_CHOFERES)
             chofer3_jd = st.selectbox("Chofer que entrega", LISTA_CHOFERES)
 
         notas_jd = st.text_area("Observaciones")
         
-        if st.form_submit_button("Guardar Registro John Deere"):
+        if st.form_submit_button("Guardar Registro John Deere", type="primary"):
             if not guia_jd:
                 st.error("⚠️ Falta ingresar el número de guía.")
             else:
@@ -197,7 +239,7 @@ if modulo == "John Deere":
 elif modulo == "Club de Pollos":
     col_logo, col_titulo = st.columns([1, 5])
     with col_logo:
-        mostrar_logo("logo_club_pollos", ancho=100)
+        mostrar_logo("logo_club_pollos", ancho=90)
     with col_titulo:
         st.subheader("Control de Insumos Club de Pollos")
 
@@ -205,11 +247,11 @@ elif modulo == "Club de Pollos":
         c1, c2 = st.columns(2)
         with c1:
             fecha_cp = st.date_input("Fecha", value=fecha_actual)
-            folio_cp = st.text_input("Folio / Identificador de Envío")
+            folio_cp = st.text_input("Folio / Identificador")
             origen_cp = st.text_input("Origen / Sucursal", value="Monterrey")
             destino_cp = st.text_input("Destino Final / Sucursal")
             estatus_cp = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
-            chofer1_cp = st.selectbox("Chofer que recolecta (Trae / Recibe)", LISTA_CHOFERES)
+            chofer1_cp = st.selectbox("Chofer que recolecta", LISTA_CHOFERES)
             chofer2_cp = st.selectbox("Chofer que entrega", LISTA_CHOFERES)
             
         with c2:
@@ -217,11 +259,11 @@ elif modulo == "Club de Pollos":
             cajas_g = st.number_input("Cajas Grandes", min_value=0, step=1, value=0)
             cajas_m = st.number_input("Cajas Medianas", min_value=0, step=1, value=0)
             cajas_ch = st.number_input("Cajas Chicas", min_value=0, step=1, value=0)
-            insumos_texto = st.text_input("Insumos recibidos (Escribe los artículos)")
+            insumos_texto = st.text_input("Insumos recibidos")
 
         notas_cp = st.text_area("Observaciones")
         
-        if st.form_submit_button("Guardar Registro Club de Pollos"):
+        if st.form_submit_button("Guardar Registro Club de Pollos", type="primary"):
             guardar_registro({
                 "Fecha": fecha_cp.strftime("%Y/%m/%d"),
                 "Guia": folio_cp if folio_cp else "S/N",
@@ -241,7 +283,7 @@ elif modulo == "Club de Pollos":
 elif modulo == "Laboratorios":
     col_logo, col_titulo = st.columns([1, 5])
     with col_logo:
-        mostrar_logo("logo_laboratorios", ancho=100)
+        mostrar_logo("logo_laboratorios", ancho=90)
     with col_titulo:
         st.subheader("Registro de Operaciones Laboratorios")
 
@@ -251,7 +293,7 @@ elif modulo == "Laboratorios":
             fecha_lab = st.date_input("Fecha", value=fecha_actual)
             guia_lab = st.text_input("Número de Guía Laboratorio")
             origen_lab = st.text_input("Origen / Sucursal", value="Río Bravo")
-            chofer1_lab = st.selectbox("Chofer que recolecta (Trae / Recibe)", LISTA_CHOFERES)
+            chofer1_lab = st.selectbox("Chofer que recolecta", LISTA_CHOFERES)
         with cb:
             destino_lab = st.text_input("Destino Final / Sucursal")
             estatus_lab = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
@@ -259,7 +301,7 @@ elif modulo == "Laboratorios":
             
         notas_lab = st.text_area("Observaciones")
         
-        if st.form_submit_button("Guardar Registro Laboratorios"):
+        if st.form_submit_button("Guardar Registro Laboratorios", type="primary"):
             guardar_registro({
                 "Fecha": fecha_lab.strftime("%Y/%m/%d"),
                 "Guia": guia_lab,
@@ -275,7 +317,7 @@ elif modulo == "Laboratorios":
 elif modulo == "Andrea":
     col_logo, col_titulo = st.columns([1, 5])
     with col_logo:
-        mostrar_logo("logo_andrea", ancho=100)
+        mostrar_logo("logo_andrea", ancho=90)
     with col_titulo:
         st.subheader("Registro de Traspasos Andrea")
 
@@ -292,7 +334,7 @@ elif modulo == "Andrea":
             
         notas_and = st.text_area("Observaciones")
         
-        if st.form_submit_button("Guardar Traspaso Andrea"):
+        if st.form_submit_button("Guardar Traspaso Andrea", type="primary"):
             guardar_registro({
                 "Fecha": fecha_and.strftime("%Y/%m/%d"),
                 "Guia": guia_and,
@@ -307,7 +349,7 @@ elif modulo == "Andrea":
 elif modulo == "Paquetería General":
     col_logo, col_titulo = st.columns([1, 5])
     with col_logo:
-        mostrar_logo("logo_mhm", ancho=80)
+        mostrar_logo("logo_mhm", ancho=70)
     with col_titulo:
         st.subheader("Paquetería General MHM")
     
@@ -325,7 +367,7 @@ elif modulo == "Paquetería General":
             
         notas_gen = st.text_area("Observaciones")
         
-        if st.form_submit_button("Guardar Registro General"):
+        if st.form_submit_button("Guardar Registro General", type="primary"):
             guardar_registro({
                 "Fecha": fecha_gen.strftime("%Y/%m/%d"),
                 "Empresa": empresa_gen,
@@ -352,8 +394,7 @@ elif modulo == "Control de Estatus y Resumen":
     ])
     
     with tab_almacen:
-        st.markdown("### 🏬 Registro Consolidado: Paquetes e Insumos Actualmente en Almacén")
-        
+        st.markdown("### 🏬 Paquetes en Almacén / Bodega")
         lista_almacen = []
         for modulo_nom, archivo in ARCHIVOS_MODULOS.items():
             if os.path.exists(archivo):
@@ -367,12 +408,10 @@ elif modulo == "Control de Estatus y Resumen":
             df_almacen_total = pd.concat(lista_almacen, ignore_index=True)
             st.dataframe(df_almacen_total, use_container_width=True)
         else:
-            st.info("No hay registros actualmente marcados 'En Almacén / Bodega'.")
+            st.info("No hay paquetes en almacén.")
 
     with tab_choferes:
-        st.markdown("### 🚚 Resumen de Movimientos y Rutas por Chofer")
-        
-        # Consolidar todos los registros
+        st.markdown("### 🚚 Resumen de Rutas por Chofer")
         lista_todas = []
         for modulo_nom, archivo in ARCHIVOS_MODULOS.items():
             if os.path.exists(archivo):
@@ -382,53 +421,37 @@ elif modulo == "Control de Estatus y Resumen":
                 
         if lista_todas:
             df_global = pd.concat(lista_todas, ignore_index=True)
-            
             c_fec, c_chof = st.columns([1, 2])
             with c_fec:
                 fechas_disponibles = sorted(df_global["Fecha"].dropna().unique(), reverse=True)
-                fecha_sel = st.selectbox("Filtrar por Fecha:", ["Todas las Fechas"] + list(fechas_disponibles))
+                fecha_sel = st.selectbox("Fecha:", ["Todas las Fechas"] + list(fechas_disponibles))
             
             with c_chof:
                 choferes_activos = [ch for ch in LISTA_CHOFERES if ch != "Ninguno / No aplica"]
-                chofer_sel = st.selectbox("Seleccionar Chofer:", choferes_activos)
+                chofer_sel = st.selectbox("Chofer:", choferes_activos)
 
             if fecha_sel != "Todas las Fechas":
                 df_global = df_global[df_global["Fecha"] == fecha_sel]
 
             st.divider()
-            st.markdown(f"#### 📋 Movimientos de `{chofer_sel}` ({fecha_sel})")
 
-            # Columnas de choferes posibles
             col_recolecta = "Chofer_Recolecta" if "Chofer_Recolecta" in df_global.columns else ("Chofer_Trae" if "Chofer_Trae" in df_global.columns else None)
             col_traslada = "Chofer_Traslada" if "Chofer_Traslada" in df_global.columns else ("Chofer_Ruta" if "Chofer_Ruta" in df_global.columns else None)
             col_entrega = "Chofer_Entrega" if "Chofer_Entrega" in df_global.columns else ("Chofer" if "Chofer" in df_global.columns else None)
 
-            # Filtros por rol
             mov_recolecta = df_global[df_global[col_recolecta] == chofer_sel] if col_recolecta and col_recolecta in df_global.columns else pd.DataFrame()
             mov_traslada = df_global[df_global[col_traslada] == chofer_sel] if col_traslada and col_traslada in df_global.columns else pd.DataFrame()
             mov_entrega = df_global[df_global[col_entrega] == chofer_sel] if col_entrega and col_entrega in df_global.columns else pd.DataFrame()
 
-            t1, t2, t3 = st.tabs(["📥 Paquetes que Recolecta", "🚚 Paquetes que Traslada", "✅ Paquetes que Entrega"])
-
+            t1, t2, t3 = st.tabs(["📥 Recolecta", "🚚 Traslada", "✅ Entrega"])
             with t1:
-                if not mov_recolecta.empty:
-                    st.dataframe(mov_recolecta, use_container_width=True)
-                else:
-                    st.info(f"No hay registros de recolección para {chofer_sel}.")
-
+                st.dataframe(mov_recolecta, use_container_width=True) if not mov_recolecta.empty else st.info("Sin registros.")
             with t2:
-                if not mov_traslada.empty:
-                    st.dataframe(mov_traslada, use_container_width=True)
-                else:
-                    st.info(f"No hay registros de traslado para {chofer_sel}.")
-
+                st.dataframe(mov_traslada, use_container_width=True) if not mov_traslada.empty else st.info("Sin registros.")
             with t3:
-                if not mov_entrega.empty:
-                    st.dataframe(mov_entrega, use_container_width=True)
-                else:
-                    st.info(f"No hay registros de entrega para {chofer_sel}.")
+                st.dataframe(mov_entrega, use_container_width=True) if not mov_entrega.empty else st.info("Sin registros.")
         else:
-            st.info("No hay registros en el sistema para generar la vista por chofer.")
+            st.info("Sin datos acumulados.")
 
     modulos_tablas = [
         (tab1, get_path("registros_john_deere.csv"), "John Deere", "jd"),
@@ -443,21 +466,13 @@ elif modulo == "Control de Estatus y Resumen":
             if os.path.exists(archivo_csv):
                 df = cargar_y_asegurar_estatus(archivo_csv)
                 
-                st.markdown(f"#### ✏️ Tabla Editable de {nombre_mod}")
-                st.caption("Puedes modificar directamente las rutas, choferes, orígenes, destinos y estatus en la tabla. Haz clic en **'💾 Guardar Cambios'** al finalizar.")
-                
-                # Definir configuración de columnas con selectboxes
                 column_config = {
                     "Estatus": st.column_config.SelectboxColumn("Estatus", options=LISTA_ESTATUS, required=True),
-                    "Chofer_Recolecta": st.column_config.SelectboxColumn("Chofer que recolecta", options=LISTA_CHOFERES),
-                    "Chofer_Traslada": st.column_config.SelectboxColumn("Chofer que traslada", options=LISTA_CHOFERES),
-                    "Chofer_Entrega": st.column_config.SelectboxColumn("Chofer que entrega", options=LISTA_CHOFERES),
-                    "Chofer_Trae": st.column_config.SelectboxColumn("Chofer que recolecta", options=LISTA_CHOFERES),
-                    "Chofer_Ruta": st.column_config.SelectboxColumn("Chofer que traslada", options=LISTA_CHOFERES),
-                    "Chofer": st.column_config.SelectboxColumn("Chofer asignado", options=LISTA_CHOFERES)
+                    "Chofer_Recolecta": st.column_config.SelectboxColumn("Chofer recolecta", options=LISTA_CHOFERES),
+                    "Chofer_Traslada": st.column_config.SelectboxColumn("Chofer traslada", options=LISTA_CHOFERES),
+                    "Chofer_Entrega": st.column_config.SelectboxColumn("Chofer entrega", options=LISTA_CHOFERES)
                 }
                 
-                # Editor Interactivo de Dataframe
                 df_editado = st.data_editor(
                     df,
                     column_config=column_config,
@@ -466,11 +481,10 @@ elif modulo == "Control de Estatus y Resumen":
                     key=f"editor_{key_suffix}"
                 )
                 
-                c_save, c_empty = st.columns([1.5, 4])
-                with c_save:
-                    if st.button(f"💾 Guardar Cambios en {nombre_mod}", key=f"btn_save_{key_suffix}", type="primary", use_container_width=True):
-                        df_editado.to_csv(archivo_csv, index=False)
-                        st.success(f"¡Cambios guardados correctamente en {nombre_mod}!")
-                        st.rerun()
+                if st.button(f"💾 Guardar Cambios ({nombre_mod})", key=f"btn_save_{key_suffix}", type="primary"):
+                    df_editado.to_csv(archivo_csv, index=False)
+                    st.cache_data.clear()
+                    st.success("¡Cambios guardados!")
+                    st.rerun()
             else:
-                st.info(f"No hay registros guardados en {nombre_mod}.")
+                st.info(f"Sin registros en {nombre_mod}.")
