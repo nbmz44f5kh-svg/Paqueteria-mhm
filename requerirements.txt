@@ -1,3 +1,4 @@
 streamlist
 pandas
+openpyxl
 pillow
