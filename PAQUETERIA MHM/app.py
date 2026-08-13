@@ -5,6 +5,15 @@ import os
 from PIL import Image
 
 # ==========================================
+# RUTA BASE DINÁMICA (SOLUCIÓN DE CARGA DE ARCHIVOS)
+# ==========================================
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+def get_path(filename):
+    """Devuelve la ruta absoluta exacta para cualquier archivo en la carpeta de la app."""
+    return os.path.join(BASE_DIR, filename)
+
+# ==========================================
 # CONFIGURACIÓN DE PÁGINA
 # ==========================================
 st.set_page_config(page_title="Paquetería MHM - Sistema de Control", layout="wide", initial_sidebar_state="expanded")
@@ -25,11 +34,11 @@ LISTA_CHOFERES = ["Ninguno / No aplica", "Chofer 1", "Chofer 2", "Chofer 3", "Ch
 LISTA_ESTATUS = ["En Almacén / Bodega", "En Tránsito", "Entregado", "Pendiente de Recolección"]
 
 ARCHIVOS_MODULOS = {
-    "John Deere": "registros_john_deere.csv",
-    "Club de Pollos": "registros_club_de_pollos.csv",
-    "Laboratorios": "registros_laboratorios.csv",
-    "Andrea": "registros_andrea.csv",
-    "Paquetería General": "registros_paqueteria_general.csv"
+    "John Deere": get_path("registros_john_deere.csv"),
+    "Club de Pollos": get_path("registros_club_de_pollos.csv"),
+    "Laboratorios": get_path("registros_laboratorios.csv"),
+    "Andrea": get_path("registros_andrea.csv"),
+    "Paquetería General": get_path("registros_paqueteria_general.csv")
 }
 
 def mostrar_logo(nombre_base, ancho=120):
@@ -43,7 +52,7 @@ def mostrar_logo(nombre_base, ancho=120):
 
     for var in variaciones:
         for ext in extensiones:
-            archivo_buscado = f"{var}{ext}"
+            archivo_buscado = get_path(f"{var}{ext}")
             if os.path.exists(archivo_buscado):
                 try:
                     img = Image.open(archivo_buscado)
@@ -54,7 +63,8 @@ def mostrar_logo(nombre_base, ancho=120):
     st.caption(f"[{nombre_base}]")
 
 def guardar_registro(datos_dict, nombre_modulo):
-    archivo_csv = f"registros_{nombre_modulo.lower().replace(' ', '_')}.csv"
+    nombre_archivo = f"registros_{nombre_modulo.lower().replace(' ', '_')}.csv"
+    archivo_csv = get_path(nombre_archivo)
     df_nuevo = pd.DataFrame([datos_dict])
     
     if not os.path.exists(archivo_csv):
@@ -421,11 +431,11 @@ elif modulo == "Control de Estatus y Resumen":
             st.info("No hay registros en el sistema para generar la vista por chofer.")
 
     modulos_tablas = [
-        (tab1, "registros_john_deere.csv", "John Deere", "jd"),
-        (tab2, "registros_club_de_pollos.csv", "Club de Pollos", "cp"),
-        (tab3, "registros_laboratorios.csv", "Laboratorios", "lab"),
-        (tab4, "registros_andrea.csv", "Andrea", "and"),
-        (tab5, "registros_paqueteria_general.csv", "Paquetería General", "gen")
+        (tab1, get_path("registros_john_deere.csv"), "John Deere", "jd"),
+        (tab2, get_path("registros_club_de_pollos.csv"), "Club de Pollos", "cp"),
+        (tab3, get_path("registros_laboratorios.csv"), "Laboratorios", "lab"),
+        (tab4, get_path("registros_andrea.csv"), "Andrea", "and"),
+        (tab5, get_path("registros_paqueteria_general.csv"), "Paquetería General", "gen")
     ]
 
     for tab_obj, archivo_csv, nombre_mod, key_suffix in modulos_tablas:
