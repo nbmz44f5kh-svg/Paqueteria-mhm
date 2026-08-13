@@ -18,8 +18,19 @@ if "usuario_activo" not in st.session_state:
     st.session_state["usuario_activo"] = ""
 
 # ==========================================
-# FUNCIONES AUXILIARES
+# FUNCIONES AUXILIARES Y CONSTANTES
 # ==========================================
+
+LISTA_CHOFERES = ["Ninguno / No aplica", "Chofer 1", "Chofer 2", "Chofer 3", "Chofer 4", "Particular"]
+LISTA_ESTATUS = ["En Almacén / Bodega", "En Tránsito", "Entregado", "Pendiente de Recolección"]
+
+ARCHIVOS_MODULOS = {
+    "John Deere": "registros_john_deere.csv",
+    "Club de Pollos": "registros_club_de_pollos.csv",
+    "Laboratorios": "registros_laboratorios.csv",
+    "Andrea": "registros_andrea.csv",
+    "Paquetería General": "registros_paqueteria_general.csv"
+}
 
 def mostrar_logo(nombre_base, ancho=120):
     extensiones = [".png", ".jpg", ".jpeg", ".webp", ""]
@@ -67,9 +78,6 @@ def cargar_y_asegurar_estatus(archivo_csv):
         cols.insert(idx, "Estatus")
         df = df[cols]
     return df
-
-LISTA_CHOFERES = ["Ninguno / No aplica", "Chofer 1", "Chofer 2", "Chofer 3", "Chofer 4", "Particular"]
-LISTA_ESTATUS = ["En Almacén / Bodega", "En Tránsito", "Entregado", "Pendiente de Recolección"]
 
 # ==========================================
 # PANTALLA 1: INICIAR JORNADA (LOGIN LIMPIO)
@@ -153,9 +161,9 @@ if modulo == "John Deere":
             
         with c2:
             st.markdown("**Asignación de Choferes**")
-            chofer1_jd = st.selectbox("Chofer 1 (Trae de MTY / Recibe)", LISTA_CHOFERES)
-            chofer2_jd = st.selectbox("Chofer 2 (Toma / Hace Ruta)", LISTA_CHOFERES)
-            chofer3_jd = st.selectbox("Chofer 3 (Entrega)", LISTA_CHOFERES)
+            chofer1_jd = st.selectbox("Chofer que recolecta (Trae de MTY / Recibe)", LISTA_CHOFERES)
+            chofer2_jd = st.selectbox("Chofer que traslada (Toma / Hace Ruta)", LISTA_CHOFERES)
+            chofer3_jd = st.selectbox("Chofer que entrega", LISTA_CHOFERES)
 
         notas_jd = st.text_area("Observaciones")
         
@@ -169,8 +177,8 @@ if modulo == "John Deere":
                     "Origen": origen_jd,
                     "Destino": destino_jd,
                     "Estatus": estatus_jd,
-                    "Chofer_Trae": chofer1_jd,
-                    "Chofer_Ruta": chofer2_jd,
+                    "Chofer_Recolecta": chofer1_jd,
+                    "Chofer_Traslada": chofer2_jd,
                     "Chofer_Entrega": chofer3_jd,
                     "Notas": notas_jd
                 }, "John Deere")
@@ -191,8 +199,8 @@ elif modulo == "Club de Pollos":
             origen_cp = st.text_input("Origen / Sucursal", value="Monterrey")
             destino_cp = st.text_input("Destino Final / Sucursal")
             estatus_cp = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
-            chofer1_cp = st.selectbox("Chofer 1 (Trae / Recibe)", LISTA_CHOFERES)
-            chofer2_cp = st.selectbox("Chofer 2 (Entrega)", LISTA_CHOFERES)
+            chofer1_cp = st.selectbox("Chofer que recolecta (Trae / Recibe)", LISTA_CHOFERES)
+            chofer2_cp = st.selectbox("Chofer que entrega", LISTA_CHOFERES)
             
         with c2:
             st.markdown("**Conteo de Cajas e Insumos**")
@@ -210,7 +218,7 @@ elif modulo == "Club de Pollos":
                 "Origen": origen_cp,
                 "Destino": destino_cp,
                 "Estatus": estatus_cp,
-                "Chofer_Trae": chofer1_cp,
+                "Chofer_Recolecta": chofer1_cp,
                 "Chofer_Entrega": chofer2_cp,
                 "Cajas_Grandes": cajas_g,
                 "Cajas_Medianas": cajas_m,
@@ -233,11 +241,11 @@ elif modulo == "Laboratorios":
             fecha_lab = st.date_input("Fecha", value=fecha_actual)
             guia_lab = st.text_input("Número de Guía Laboratorio")
             origen_lab = st.text_input("Origen / Sucursal", value="Río Bravo")
-            chofer1_lab = st.selectbox("Chofer Trae / Recibe", LISTA_CHOFERES)
+            chofer1_lab = st.selectbox("Chofer que recolecta (Trae / Recibe)", LISTA_CHOFERES)
         with cb:
             destino_lab = st.text_input("Destino Final / Sucursal")
             estatus_lab = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
-            chofer2_lab = st.selectbox("Chofer Entrega", LISTA_CHOFERES)
+            chofer2_lab = st.selectbox("Chofer que entrega", LISTA_CHOFERES)
             
         notas_lab = st.text_area("Observaciones")
         
@@ -248,7 +256,7 @@ elif modulo == "Laboratorios":
                 "Origen": origen_lab,
                 "Destino": destino_lab,
                 "Estatus": estatus_lab,
-                "Chofer_Trae": chofer1_lab,
+                "Chofer_Recolecta": chofer1_lab,
                 "Chofer_Entrega": chofer2_lab,
                 "Notas": notas_lab
             }, "Laboratorios")
@@ -270,7 +278,7 @@ elif modulo == "Andrea":
         with cb:
             destino_and = st.text_input("Sucursal Destino")
             estatus_and = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
-            chofer_and = st.selectbox("Chofer Responsable", LISTA_CHOFERES)
+            chofer_and = st.selectbox("Chofer que traslada / entrega", LISTA_CHOFERES)
             
         notas_and = st.text_area("Observaciones")
         
@@ -281,7 +289,7 @@ elif modulo == "Andrea":
                 "Origen": origen_and,
                 "Destino": destino_and,
                 "Estatus": estatus_and,
-                "Chofer": chofer_and,
+                "Chofer_Entrega": chofer_and,
                 "Notas": notas_and
             }, "Andrea")
 
@@ -303,7 +311,7 @@ elif modulo == "Paquetería General":
         with c2:
             destino_gen = st.text_input("Destino Final / Sucursal")
             estatus_gen = st.selectbox("Estatus Inicial", LISTA_ESTATUS)
-            chofer_gen = st.selectbox("Chofer Encargado", LISTA_CHOFERES)
+            chofer_gen = st.selectbox("Chofer que traslada / entrega", LISTA_CHOFERES)
             
         notas_gen = st.text_area("Observaciones")
         
@@ -315,7 +323,7 @@ elif modulo == "Paquetería General":
                 "Origen": origen_gen,
                 "Destino": destino_gen,
                 "Estatus": estatus_gen,
-                "Chofer": chofer_gen,
+                "Chofer_Entrega": chofer_gen,
                 "Notas": notas_gen
             }, "Paqueteria_General")
 
@@ -323,8 +331,9 @@ elif modulo == "Paquetería General":
 elif modulo == "Control de Estatus y Resumen":
     st.subheader("Control de Estatus y Resumen Operativo")
     
-    tab_almacen, tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab_almacen, tab_choferes, tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📦 En Almacén", 
+        "🚚 Rutas por Chofer",
         "John Deere", 
         "Club de Pollos", 
         "Laboratorios",
@@ -334,16 +343,9 @@ elif modulo == "Control de Estatus y Resumen":
     
     with tab_almacen:
         st.markdown("### 🏬 Registro Consolidado: Paquetes e Insumos Actualmente en Almacén")
-        archivos_modulos = {
-            "John Deere": "registros_john_deere.csv",
-            "Club de Pollos": "registros_club_de_pollos.csv",
-            "Laboratorios": "registros_laboratorios.csv",
-            "Andrea": "registros_andrea.csv",
-            "Paquetería General": "registros_paqueteria_general.csv"
-        }
         
         lista_almacen = []
-        for modulo_nom, archivo in archivos_modulos.items():
+        for modulo_nom, archivo in ARCHIVOS_MODULOS.items():
             if os.path.exists(archivo):
                 df = cargar_y_asegurar_estatus(archivo)
                 df_filtrado = df[df["Estatus"] == "En Almacén / Bodega"].copy()
@@ -356,6 +358,67 @@ elif modulo == "Control de Estatus y Resumen":
             st.dataframe(df_almacen_total, use_container_width=True)
         else:
             st.info("No hay registros actualmente marcados 'En Almacén / Bodega'.")
+
+    with tab_choferes:
+        st.markdown("### 🚚 Resumen de Movimientos y Rutas por Chofer")
+        
+        # Consolidar todos los registros
+        lista_todas = []
+        for modulo_nom, archivo in ARCHIVOS_MODULOS.items():
+            if os.path.exists(archivo):
+                df_temp = cargar_y_asegurar_estatus(archivo)
+                df_temp.insert(0, "Módulo", modulo_nom)
+                lista_todas.append(df_temp)
+                
+        if lista_todas:
+            df_global = pd.concat(lista_todas, ignore_index=True)
+            
+            c_fec, c_chof = st.columns([1, 2])
+            with c_fec:
+                fechas_disponibles = sorted(df_global["Fecha"].dropna().unique(), reverse=True)
+                fecha_sel = st.selectbox("Filtrar por Fecha:", ["Todas las Fechas"] + list(fechas_disponibles))
+            
+            with c_chof:
+                choferes_activos = [ch for ch in LISTA_CHOFERES if ch != "Ninguno / No aplica"]
+                chofer_sel = st.selectbox("Seleccionar Chofer:", choferes_activos)
+
+            if fecha_sel != "Todas las Fechas":
+                df_global = df_global[df_global["Fecha"] == fecha_sel]
+
+            st.divider()
+            st.markdown(f"#### 📋 Movimientos de `{chofer_sel}` ({fecha_sel})")
+
+            # Columnas de choferes posibles
+            col_recolecta = "Chofer_Recolecta" if "Chofer_Recolecta" in df_global.columns else ("Chofer_Trae" if "Chofer_Trae" in df_global.columns else None)
+            col_traslada = "Chofer_Traslada" if "Chofer_Traslada" in df_global.columns else ("Chofer_Ruta" if "Chofer_Ruta" in df_global.columns else None)
+            col_entrega = "Chofer_Entrega" if "Chofer_Entrega" in df_global.columns else ("Chofer" if "Chofer" in df_global.columns else None)
+
+            # Filtros por rol
+            mov_recolecta = df_global[df_global[col_recolecta] == chofer_sel] if col_recolecta and col_recolecta in df_global.columns else pd.DataFrame()
+            mov_traslada = df_global[df_global[col_traslada] == chofer_sel] if col_traslada and col_traslada in df_global.columns else pd.DataFrame()
+            mov_entrega = df_global[df_global[col_entrega] == chofer_sel] if col_entrega and col_entrega in df_global.columns else pd.DataFrame()
+
+            t1, t2, t3 = st.tabs(["📥 Paquetes que Recolecta", "🚚 Paquetes que Traslada", "✅ Paquetes que Entrega"])
+
+            with t1:
+                if not mov_recolecta.empty:
+                    st.dataframe(mov_recolecta, use_container_width=True)
+                else:
+                    st.info(f"No hay registros de recolección para {chofer_sel}.")
+
+            with t2:
+                if not mov_traslada.empty:
+                    st.dataframe(mov_traslada, use_container_width=True)
+                else:
+                    st.info(f"No hay registros de traslado para {chofer_sel}.")
+
+            with t3:
+                if not mov_entrega.empty:
+                    st.dataframe(mov_entrega, use_container_width=True)
+                else:
+                    st.info(f"No hay registros de entrega para {chofer_sel}.")
+        else:
+            st.info("No hay registros en el sistema para generar la vista por chofer.")
 
     modulos_tablas = [
         (tab1, "registros_john_deere.csv", "John Deere", "jd"),
@@ -370,58 +433,34 @@ elif modulo == "Control de Estatus y Resumen":
             if os.path.exists(archivo_csv):
                 df = cargar_y_asegurar_estatus(archivo_csv)
                 
-                st.markdown(f"#### ⚙️ Gestionar Registros de {nombre_mod}")
+                st.markdown(f"#### ✏️ Tabla Editable de {nombre_mod}")
+                st.caption("Puedes modificar directamente las rutas, choferes, orígenes, destinos y estatus en la tabla. Haz clic en **'💾 Guardar Cambios'** al finalizar.")
                 
-                if "Guia" in df.columns:
-                    opciones_guias = df["Guia"].astype(str).tolist()
-                else:
-                    opciones_guias = [f"Fila {i+1}" for i in range(len(df))]
+                # Definir configuración de columnas con selectboxes
+                column_config = {
+                    "Estatus": st.column_config.SelectboxColumn("Estatus", options=LISTA_ESTATUS, required=True),
+                    "Chofer_Recolecta": st.column_config.SelectboxColumn("Chofer que recolecta", options=LISTA_CHOFERES),
+                    "Chofer_Traslada": st.column_config.SelectboxColumn("Chofer que traslada", options=LISTA_CHOFERES),
+                    "Chofer_Entrega": st.column_config.SelectboxColumn("Chofer que entrega", options=LISTA_CHOFERES),
+                    "Chofer_Trae": st.column_config.SelectboxColumn("Chofer que recolecta", options=LISTA_CHOFERES),
+                    "Chofer_Ruta": st.column_config.SelectboxColumn("Chofer que traslada", options=LISTA_CHOFERES),
+                    "Chofer": st.column_config.SelectboxColumn("Chofer asignado", options=LISTA_CHOFERES)
+                }
                 
-                if len(opciones_guias) > 0:
-                    c_sel, c_est, c_btn_upd, c_btn_del = st.columns([2.5, 2, 1.2, 1.2])
-                    
-                    with c_sel:
-                        guia_seleccionada = st.selectbox(
-                            "Selecciona Registro / Guía:", 
-                            opciones_guias, 
-                            key=f"sel_{key_suffix}"
-                        )
-                    with c_est:
-                        nuevo_estatus = st.selectbox(
-                            "Nuevo Estatus:", 
-                            LISTA_ESTATUS, 
-                            key=f"est_{key_suffix}"
-                        )
-                    with c_btn_upd:
-                        st.write("")
-                        st.write("")
-                        if st.button("🔄 Actualizar", key=f"btn_upd_{key_suffix}", use_container_width=True):
-                            if "Guia" in df.columns:
-                                df.loc[df["Guia"].astype(str) == guia_seleccionada, "Estatus"] = nuevo_estatus
-                            else:
-                                idx = int(guia_seleccionada.replace("Fila ", "")) - 1
-                                df.loc[idx, "Estatus"] = nuevo_estatus
-                                
-                            df.to_csv(archivo_csv, index=False)
-                            st.success(f"Estatus actualizado a '{nuevo_estatus}'.")
-                            st.rerun()
-
-                    with c_btn_del:
-                        st.write("")
-                        st.write("")
-                        if st.button("🗑️ Eliminar", key=f"btn_del_{key_suffix}", use_container_width=True):
-                            if "Guia" in df.columns:
-                                df = df[df["Guia"].astype(str) != guia_seleccionada]
-                            else:
-                                idx = int(guia_seleccionada.replace("Fila ", "")) - 1
-                                df = df.drop(index=idx)
-                                
-                            df.to_csv(archivo_csv, index=False)
-                            st.success("Registro eliminado correctamente.")
-                            st.rerun()
-
-                st.divider()
-                st.markdown(f"**Tabla Histórica de {nombre_mod}:**")
-                st.dataframe(df, use_container_width=True)
+                # Editor Interactivo de Dataframe
+                df_editado = st.data_editor(
+                    df,
+                    column_config=column_config,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    key=f"editor_{key_suffix}"
+                )
+                
+                c_save, c_empty = st.columns([1.5, 4])
+                with c_save:
+                    if st.button(f"💾 Guardar Cambios en {nombre_mod}", key=f"btn_save_{key_suffix}", type="primary", use_container_width=True):
+                        df_editado.to_csv(archivo_csv, index=False)
+                        st.success(f"¡Cambios guardados correctamente en {nombre_mod}!")
+                        st.rerun()
             else:
                 st.info(f"No hay registros guardados en {nombre_mod}.")
